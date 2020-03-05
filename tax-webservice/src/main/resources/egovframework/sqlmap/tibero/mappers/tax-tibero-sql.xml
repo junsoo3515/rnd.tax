@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.webservice.dao.TaxMapper">
+
+    <!-- 이벤트 데이터 등록 -->
+    <insert id="setEventMerge" parameterType="map">
+        MERGE INTO CM_EVT_OCR
+              USING DUAL
+              ON (evt_ocr_no = #{vo.evt_ocr_no})
+              WHEN MATCHED THEN
+                    UPDATE SET
+                        UPD_DATE = SYSDATE
+              WHEN NOT MATCHED THEN
+                     INSERT (
+                                EVT_OCR_NO,
+                                EVT_ID,
+                                EVT_GRAD_CD,
+                                EVT_PRGRS_CD,
+                                EVT_PLACE,
+                                EVT_DTL,
+                                EVT_OCR_YMD_HMS,
+                                EVT_END_YMD_HMS,
+                                POINT_X,
+                                POINT_Y,
+                                POINT_Z,
+                                PCV_YN,
+                                PCV_USER_ID,
+                                PCV_USER_NM,
+                                PCV_DATE,
+                                RCEPT_TY_CD,
+                                RCEPT_USER_ID,
+                                RCEPT_USER_NM,
+                                RCEPT_YMD_HMS,
+                                RECPT_CONTS,
+                                APC_NM,
+                                APC_TEL_NO,
+                                ACTION_USER_ID,
+                                ACTION_USER_NM,
+                                ACTION_YMD_HMS,
+                                ACTION_CONTS,
+                                OCR_FCLT_ID,
+                                IMG_URL,
+                                SCOPE_RADS,
+                                CNCL_RSN,
+                                DSTRT_CD,
+                                CTR_CD,
+                                TRMS_SYS_CD,
+                                RGS_USER_ID,
+                                RGS_DATE,
+                                UPD_USER_ID,
+                                UPD_DATE,
+                                EVT_ID_SUB_CD
+                             ) VALUES (
+
+                                       )
+    </insert>
+
+    <!-- 112 다매체 접수 등록 -->
+    <insert id="setMtmdaReceptMerge" parameterType="map">
+        MERGE INTO ES_112_MTMDA_RECEPT
+              USING DUAL
+              ON (evt_ocr_no = #{vo.evt_ocr_no})
+              WHEN MATCHED THEN
+                    UPDATE SET
+                        UPD_DATE = SYSDATE
+              WHEN NOT MATCHED THEN
+                    INSERT (
+                              EVT_OCR_NO,
+                              RECEPT_YMD,
+                              MTMDA_PRCS_TY_CD,
+                              MTMDA_PRCS_STATE,
+                              TITLE,
+                              IMG_START_YMD_HMS,
+                              IMG_END_YMD_HMS,
+                              POINT_X,
+                              POINT_Y,
+                              ADRES_NM,
+                              CONTS,
+                              PRCS_TY_YMD_HMS,
+                              RECEPT_REQ_ID,
+                              RECEPT_PRCS_YN,
+                              RECEPT_PRCS_YMD_HMS,
+                              RECEPT_PRCS_USER_ID,
+                              RECEPT_PRCS_NM,
+                              FILE_ID_RETURN_YMD_HMS,
+                              UPD_USER_ID,
+                              UPD_DATE,
+                              RGS_USER_ID,
+                              RGS_DATE,
+                              CASE_RECEPT_NO,
+                              RECEPT_RPT_YN,
+                              RECEPT_RPT_YMD_HMS,
+                              RECEPT_RPT_ID,
+                              RECEPT_RPT_NM,
+                              RECV_NO
+                            ) VALUES (
+
+                                      )
+    </insert>
+</mapper>
