@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.event.EventGenerateMapper">
+
+    <!-- 체납차량 발생현황 목록 총 개수 가져오기 -->
+    <select id="getTaxOcrListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT (1)
+        FROM
+            (
+              SELECT
+                  A.tph_seq,
+                  A.car_no,
+                  NVL(A.state, '발생') AS state,
+                  B.cctv_nm,
+                  B.cctv_adres,
+                  B.reg_dts,
+                  B.tax_money_cnt
+              FROM
+                  (
+                    SELECT
+                        *
+                    FROM
+                        (
+                          SELECT
+                              tph_seq,
+                              tri_seq,
+                              car_no,
+                              CASE
+                                  WHEN prc_fl = 'N' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                  THEN '발생'
+                                  WHEN prc_fl = 'Y'AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                  THEN '접수중'
+                                  WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                  THEN '처리중'
+                                  WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'Y' AND seize_user_seq IS NOT NULL
+                                  THEN '종료'
+                              END AS state
+                          FROM
+                              TAX_PRC_HISTORY
+                        )
+                  ) AS A
+                  LEFT JOIN
+                  (
+                    SELECT
+                        TRI.tri_seq,
+                        TCI.car_no,
+                        PFV.road_adres_nm AS cctv_adres,
+                        (SELECT fclt_lbl_nm || '(' || road_adres_nm || ')' FROM PF_FACILITY_VW WHERE fclt_id = TRI.cctv_id) cctv_nm,
+                        TRI.reg_dts,
+                        TCI.tax_money || ' (' || TCI.tax_cnt || ')' AS tax_money_cnt
+                    FROM
+                        TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                    <where>
+                        AND TRI.car_no = TCI.car_no
+                        AND TRI.tax_fl = 'Y'
+                        AND TRI.cctv_id = PFV.fclt_id
+                    </where>
+                  ) AS B
+                  ON A.tri_seq = B.tri_seq
+            )
+        <where>
+            <if test="vo.isSearch == true">
+                <if test="srcCarNo != null and srcCarNo != ''">
+                    AND (car_no LIKE '%${srcCarNo}%')
+                </if>
+                <if test="srcCctvInfo != null and srcCctvInfo != ''">
+                    AND (cctv_nm LIKE '%${srcCctvInfo}%' OR cctv_adres LIKE '%{srcCctvInfo}%')
+                </if>
+                <if test="srcSDate != null and srcSDate != ''">
+                    AND  TO_CHAR(reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                </if>
+                <if test="srcEDate != null and srcEDate != ''">
+                    AND  TO_CHAR(reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 체납차량 발생현황 목록 가져오기 -->
+    <select id="getTaxOcrList" parameterType="map" resultType="tax.www.vo.event.GenerateVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        *
+                    FROM
+                        (
+                          SELECT
+                              A.tph_seq,
+                              A.tri_seq,
+                              A.car_no,
+                              NVL(A.state, '발생') AS state,
+                              B.cctv_nm,
+                              B.cctv_adres,
+                              B.reg_dts,
+                              B.tax_money_cnt
+                          FROM
+                              (
+                                SELECT
+                                    *
+                                FROM
+                                    (
+                                      SELECT
+                                          tph_seq,
+                                          tri_seq,
+                                          car_no,
+                                          CASE
+                                              WHEN prc_fl = 'N' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                              THEN '발생'
+                                              WHEN prc_fl = 'Y'AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                              THEN '접수중'
+                                              WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                              THEN '처리중'
+                                              WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'Y' AND seize_user_seq IS NOT NULL
+                                              THEN '종료'
+                                          END AS state
+                                      FROM
+                                          TAX_PRC_HISTORY
+                                    )
+                              ) AS A
+                              LEFT JOIN
+                              (
+                                SELECT
+                                    TRI.tri_seq,
+                                    TCI.car_no,
+                                    PFV.road_adres_nm AS cctv_adres,
+                                    (SELECT fclt_lbl_nm || '(' || road_adres_nm || ')' FROM PF_FACILITY_VW WHERE fclt_id = TRI.cctv_id) cctv_nm,
+                                    TRI.reg_dts,
+                                    TCI.tax_money || ' (' || TCI.tax_cnt || ')' AS tax_money_cnt
+                                FROM
+                                    TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                                <where>
+                                    AND TRI.car_no = TCI.car_no
+                                    AND TRI.tax_fl = 'Y'
+                                    AND TRI.cctv_id = PFV.fclt_id
+                                </where>
+                              ) AS B
+                              ON A.tri_seq = B.tri_seq
+                        )
+                    <where>
+                        <if test="vo.isSearch == true">
+                            <if test="srcCarNo != null and srcCarNo != ''">
+                                AND (car_no LIKE '%${srcCarNo}%')
+                            </if>
+                            <if test="srcCctvInfo != null and srcCctvInfo != ''">
+                                AND (cctv_nm LIKE '%${srcCctvInfo}%' OR cctv_adres LIKE '%{srcCctvInfo}%')
+                            </if>
+                            <if test="srcSDate != null and srcSDate != ''">
+                                AND  TO_CHAR(reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                            </if>
+                            <if test="srcEDate != null and srcEDate != ''">
+                                AND  TO_CHAR(reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                            </if>
+                            <if test="vo.defWhere != null">
+                                AND ${vo.defWhere}
+                            </if>
+                        </if>
+                    </where>
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , reg_dts DESC
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 시간별 발생현황 목록 가져오기 -->
+    <select id="getTimeTaxOcrList" parameterType="map" resultType="tax.www.vo.event.GenerateVO">
+        WITH HOUR_TIME AS
+        (
+          SELECT
+              LPAD(LEVEL -1, 2, '0') hour
+          FROM DUAL
+          CONNECT BY LEVEL &lt;= 24
+        )
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        HT.hour || '시' AS tax_time,
+                        NVL(COUNT (TRI.tax_fl), '0') AS tax_cnt,
+                        NVL(SUM (TCI.tot_money), '0') AS tax_tot_money
+                    FROM
+                        HOUR_TIME HT
+                    LEFT JOIN
+                        TAX_RECOG_INFO TRI
+                    ON HT.hour = TO_CHAR(TRI.reg_dts, 'HH24')
+                    AND TRI.tax_fl = 'Y'
+                    <if test="vo.isSearch == true">
+                        <if test="srcSDate != null and srcSDate != ''">
+                            AND  TO_CHAR(TRI.reg_dts,'YYYYMMDD') &gt;= #{srcSDate}
+                        </if>
+                        <if test="srcEDate != null and srcEDate != ''">
+                            AND  TO_CHAR(TRI.reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                        </if>
+                        <if test="vo.defWhere != null">
+                            AND ${vo.defWhere}
+                        </if>
+                    </if>
+                    LEFT JOIN
+                        TAX_CAR_INFO TCI
+                    ON TRI.car_no = TCI.car_no
+                     GROUP BY HT.hour
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , HT.hour
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+    </select>
+
+    <!-- 지역별 발생현황 Top5 목록 가져오기 -->
+    <select id="getAreaOcrTopList" parameterType="map" resultType="tax.www.vo.event.GenerateVO">
+        SELECT
+            A.lg_dong_cd,
+            A.cctv_cnt AS cctv_cnt,
+            A.lg_emd_nm,
+            B.lg_dong_nm AS area_nm,
+            B.tax_cnt AS tax_cnt
+        FROM
+            (
+              SELECT
+                  UGD.lg_dong_cd,
+                  UGD.lg_emd_nm,
+                  COUNT (PFV.fclt_id) AS cctv_cnt
+              FROM
+                  PF_FACILITY_VW PFV, UCP_DOAN.UM_GIS_DONG UGD
+              WHERE
+                  PFV.lg_dong_cd = UGD.lg_dong_cd
+              GROUP BY UGD.lg_dong_cd, UGD.lg_emd_nm
+            ) AS A
+            LEFT JOIN
+            (
+              SELECT
+                  PFV.lg_dong_cd,
+                  PFV.lg_dong_nm,
+                  COUNT (TRI.tri_seq) AS tax_cnt
+              FROM
+                  TAX_RECOG_INFO TRI, PF_FACILITY_VW PFV
+              <where>
+                  AND TRI.cctv_id = PFV.fclt_id
+                  AND TRI.tax_fl = 'Y'
+                  <if test="vo.isSearch == true">
+                      <if test="srcSDate != null and srcSDate != ''">
+                          AND  TO_CHAR(TRI.reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                      </if>
+                      <if test="srcEDate != null and srcEDate != ''">
+                          AND  TO_CHAR(TRI.reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                      </if>
+                      <if test="vo.defWhere != null">
+                          AND ${vo.defWhere}
+                      </if>
+                  </if>
+              </where>
+              GROUP BY PFV.lg_dong_cd, PFV.lg_dong_nm
+            ) AS B
+        ON  A.lg_dong_cd = B.lg_dong_cd
+        <where>
+            AND B.tax_cnt IS NOT NULL
+            AND ROWNUM &lt; = 5
+        </where>
+        ORDER BY tax_cnt DESC
+    </select>
+
+    <!-- CCTV별 발생현황 Top5 목록 가져오기 -->
+    <select id="getCctvOcrTopList" parameterType="map" resultType="tax.www.vo.event.GenerateVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  TRI.cctv_id,
+                  PFV.fclt_lbl_nm AS cctv_nm,
+                  PFV.road_adres_nm AS cctv_adres,
+                  COUNT (TRI.tax_fl) AS tax_cnt
+              FROM
+                  TAX_RECOG_INFO TRI, PF_FACILITY_VW PFV
+              <where>
+                  AND TRI.tax_fl = 'Y'
+                  AND TRI.cctv_id = PFV.fclt_id
+                  <if test="vo.isSearch == true">
+                      <if test="srcSDate != null and srcSDate != ''">
+                          AND  TO_CHAR(TRI.reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                      </if>
+                      <if test="srcEDate != null and srcEDate != ''">
+                          AND  TO_CHAR(TRI.reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                      </if>
+                      <if test="vo.defWhere != null">
+                          AND ${vo.defWhere}
+                      </if>
+                  </if>
+              </where>
+
+              GROUP BY TRI.cctv_id, PFV.fclt_lbl_nm, PFV.road_adres_nm
+
+              <trim prefix="ORDER BY" prefixOverrides=",">
+                  <choose>
+                      <when test="vo.sortID != null and vo.sortID != ''">
+                          , ${vo.sortID} ${vo.sortDesc}
+                      </when>
+                      <otherwise>
+                          , tax_cnt DESC
+                      </otherwise>
+                  </choose>
+              </trim>
+            )
+        WHERE
+            ROWNUM &lt;= 5
+    </select>
+</mapper>

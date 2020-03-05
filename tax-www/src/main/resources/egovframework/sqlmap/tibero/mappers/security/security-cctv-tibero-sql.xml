@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.security.SecurityCctvMapper">
+
+    <!-- CCTV ID 가져오기(Select2) -->
+    <select id="getCctvIdList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            PFV.fclt_id AS id,
+            PFV.fclt_id AS text
+        FROM
+            PF_PRESET_INFO_VW PRIV, PF_FACILITY_VW PFV
+        WHERE
+            PFV.fclt_id = PRIV.cctv_id
+        AND
+            PFV.fclt_id NOT IN (SELECT cctv_id FROM TAX_MONITOR_CCTV)
+        AND
+            PRIV.preset_num = '70'
+        AND
+            PFV.fclt_id LIKE '%${word}%'
+        AND
+            PFV.fclt_knd_cd = 'CTV'
+        AND
+            PFV.point_x IS NOT NULL AND PFV.point_x != 0
+        AND
+            PFV.point_y IS NOT NULL AND PFV.point_y != 0
+    </select>
+
+    <!-- Select2에서 선택한 CCTV ID에 대한 CCTV 정보 가져오기 -->
+    <select id="getCctvInfo" parameterType="String" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+            road_adres_nm AS cctv_adres ,
+            ('X: '|| point_x ||', Y:' || point_y) AS point_xy,
+            point_x,
+            point_y
+        FROM
+            PF_FACILITY_VW
+        WHERE
+            fclt_id = #{cctv_id}
+    </select>
+
+    <!-- 모니터링 CCTV 총 개수 가져오기 -->
+    <select id="getCctvListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            PF_FACILITY_VW PFV, TAX_MONITOR_CCTV TMC
+        <where>
+            AND TMC.cctv_id = PFV.fclt_id
+            <if test="vo.isSearch == true">
+                <if test="srcWord != null and srcWord != ''">
+                    AND (TMC.cctv_id LIKE '%${srcWord}%' OR PFV.road_adres_nm LIKE '%${srcWord}%')
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 모니터링 CCTV 목록 가져오기 -->
+    <select id="getCctvList" parameterType="map" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+        *
+        FROM
+        (
+            SELECT
+                ROWNUM AS rnum,
+                T.*
+            FROM
+            (
+                SELECT
+                    TMC.tmc_seq,
+                    TMC.cctv_id,
+                    TMC.cctv_id AS prev_cctv_id,
+                    PFV.road_adres_nm AS cctv_adres,
+                    TMC.preset_num,
+                    TMC.reg_dts,
+                    ('X: '|| PFV.point_x ||', Y:' || PFV.point_y) AS point_xy,
+                    PFV.point_x,
+                    PFV.point_y
+                FROM
+                    PF_FACILITY_VW PFV, TAX_MONITOR_CCTV TMC
+                <where>
+                    AND TMC.cctv_id = PFV.fclt_id
+                    <if test="vo.isSearch == true">
+                        <if test="srcWord != null and srcWord != ''">
+                            AND (TMC.cctv_id LIKE '%${srcWord}%' OR PFV.road_adres_nm LIKE '%${srcWord}%')
+                        </if>
+                        <if test="vo.defWhere != null">
+                            AND ${vo.defWhere}
+                        </if>
+                    </if>
+                </where>
+                ORDER BY TMC.reg_dts DESC
+            ) T
+        ) A0
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 모니터링 CCTV Insert -->
+    <insert id="setCctvInsert" parameterType="tax.www.vo.security.CctvVO">
+        INSERT INTO TAX_MONITOR_CCTV (
+                                          tmc_seq,
+                                          cctv_id,
+                                          preset_num,
+                                          use_fl,
+                                          reg_mem_id,
+                                          reg_dts,
+                                          mod_dts
+                                        )
+                                        VALUES (
+                                                  NVL((SELECT MAX(tmc_seq) FROM TAX_MONITOR_CCTV) + 1, 1),
+                                                  #{vo.cctv_id},
+                                                  '70',
+                                                  'Y',
+                                                  #{vo.reg_mem_id},
+                                                  SYSDATE,
+                                                  SYSDATE
+                                                )
+
+    </insert>
+
+    <!-- 모니터링 CCTV Update -->
+    <update id="setCctvUpdate" parameterType="tax.www.vo.security.CctvVO">
+        UPDATE
+            TAX_MONITOR_CCTV
+        <set>
+            cctv_id = #{vo.cctv_id},
+            mod_dts = SYSDATE
+        </set>
+        WHERE
+            tmc_seq = #{vo.tmc_seq}
+    </update>
+
+    <!-- 모니터링 CCTV Delete -->
+    <delete id="setCctvDelete" parameterType="tax.www.vo.security.CctvVO">
+        DELETE FROM TAX_MONITOR_CCTV
+        WHERE tmc_seq = #{vo.tmc_seq}
+    </delete>
+
+    <!-- 투망감시 설정 가져오기 -->
+    <select id="getNetSettingList" parameterType="String" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+            tns_seq AS tns_seq,
+            lnk_cctv_id AS cctv_id,
+            lnk_preset_num AS preset_num,
+            sort_seq AS sort_seq
+        FROM
+            TAX_NET_SETTING
+        WHERE
+            cctv_id = #{cctv_id}
+        AND
+            use_fl = 'Y'
+    </select>
+
+    <!-- 투망감시 설정 갯수 가져오기 -->
+    <select id="getNetSettingListCnt" parameterType="String" resultType="int">
+        SELECT
+            COUNT (tns_seq)
+        FROM
+            TAX_NET_SETTING
+        WHERE
+            cctv_id = #{cctv_id}
+        AND
+            use_fl = 'Y'
+    </select>
+
+    <!-- CCTV GIS 정보 가져오기 -->
+    <select id="getCctvGeoData" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+            PFV.fclt_id AS cctv_id,
+            PRIV.preset_num AS preset_num,
+            PRIV.point_x AS point_x,
+            PRIV.point_y AS point_y,
+            PFV.fclt_used_ty_cd AS cctv_type,
+            PFV.fclt_knd_dtl_cd AS cctv_rotate
+        FROM
+            PF_PRESET_INFO_VW PRIV, PF_FACILITY_VW PFV
+        WHERE
+            PFV.fclt_id = PRIV.cctv_id
+        AND
+            PRIV.preset_num = '70'
+        AND
+            PFV.fclt_knd_cd = 'CTV'
+        AND
+            PFV.point_x IS NOT NULL AND PFV.point_x != 0
+        AND
+            PFV.point_y IS NOT NULL AND PFV.point_y != 0
+    </select>
+
+    <!-- 반경 내(500m) 모든 프리셋 GIS 정보 가져오기 -->
+    <select id="getAllPresetGeoData" parameterType="map" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    point_x,
+                    point_y,
+                    preset_num,
+                    cctv_id,
+                    ( 6371 * ACOS( TRUNC(
+                        COS( ( ASIN(1) * 2) / 180 * #{map.point_y})
+                      * COS( ( ASIN(1) * 2) / 180 * point_y)
+                      * COS( ( ( ASIN(1) * 2) / 180 * #{map.point_x} ) - ( ( ASIN(1) * 2) / 180 * point_x) )
+                      + SIN( ( ASIN(1) * 2) / 180 * #{map.point_y} )
+                      * SIN( ( ASIN(1) * 2) / 180 * point_y) ,16)
+                      ) ) AS DISTANCE
+                FROM
+                    PF_PRESET_INFO_VW
+                WHERE
+                    preset_num != '70'
+                AND
+                    cctv_id != #{map.cctv_id}
+                AND
+                    point_x BETWEEN #{map.gisBoundsLeft} AND #{map.gisBoundsRight}
+                AND
+                    point_y BETWEEN #{map.gisBoundsBottom} AND #{map.gisBoundsTop}
+                ORDER BY DISTANCE ASC
+            ) A
+        WHERE
+            A.DISTANCE &lt;= 0.5
+    </select>
+
+    <!-- 투망감시 설정된 프리셋 GIS 정보 가져오기 -->
+    <select id="getPresetGeoData" parameterType="String" resultType="tax.www.vo.security.CctvVO">
+        SELECT
+            PPIV.point_x AS point_x,
+            PPIV.point_y AS point_y,
+            TNS.sort_seq AS sort_seq,
+            TNS.lnk_preset_num AS preset_num,
+            TNS.lnk_cctv_id AS cctv_id
+        FROM
+            PF_PRESET_INFO_VW PPIV, TAX_NET_SETTING TNS
+        WHERE
+            PPIV.cctv_id = TNS.lnk_cctv_id
+        AND
+            PPIV.preset_num = TNS.lnk_preset_num
+        AND
+            TNS.lnk_preset_num != '70'
+        AND
+            TNS.cctv_id = #{cctv_id}
+    </select>
+
+    <!-- 투망감시 설정 Insert -->
+    <insert id="setNetSettingInsert" parameterType="tax.www.vo.security.CctvVO">
+        INSERT ALL
+            INTO TAX_NET_SETTING (tns_seq, cctv_id, preset_num, sort_seq, lnk_cctv_id, lnk_preset_num, use_fl, reg_mem_id, reg_dts, mod_dts)
+                VALUES (
+                          NVL((SELECT MAX(tns_seq) + 1 FROM TAX_NET_SETTING), 1),
+                          #{vo.prev_cctv_id},
+                          '70',
+                          NVL((SELECT MAX(sort_seq) + 1 FROM TAX_NET_SETTING WHERE cctv_id = #{vo.prev_cctv_id}), 1),
+                      <if test="vo.lnk_cctv_id1 != ''">
+                          #{vo.lnk_cctv_id1},
+                          #{vo.lnk_preset_num1},
+                          'Y',
+                      </if>
+                      <if test="vo.lnk_cctv_id1 == ''">
+                          ' ',
+                          ' ',
+                          'N',
+                      </if>
+                          #{vo.reg_mem_id},
+                          SYSDATE,
+                          SYSDATE
+                        )
+            INTO TAX_NET_SETTING (tns_seq, cctv_id, preset_num, sort_seq, lnk_cctv_id, lnk_preset_num, use_fl, reg_mem_id, reg_dts, mod_dts)
+                VALUES (
+                          NVL((SELECT MAX(tns_seq) + 2 FROM TAX_NET_SETTING), 2),
+                          #{vo.prev_cctv_id},
+                          '70',
+                          NVL((SELECT MAX(sort_seq) + 2 FROM TAX_NET_SETTING WHERE cctv_id = #{vo.prev_cctv_id}), 2),
+                      <if test="vo.lnk_cctv_id2 != ''">
+                          #{vo.lnk_cctv_id2},
+                          #{vo.lnk_preset_num2},
+                          'Y',
+                      </if>
+                      <if test="vo.lnk_cctv_id2 == ''">
+                          ' ',
+                          ' ',
+                          'N',
+                      </if>
+                          #{vo.reg_mem_id},
+                          SYSDATE,
+                          SYSDATE
+                        )
+            INTO TAX_NET_SETTING (tns_seq, cctv_id, preset_num, sort_seq, lnk_cctv_id, lnk_preset_num, use_fl, reg_mem_id, reg_dts, mod_dts)
+                VALUES (
+                          NVL((SELECT MAX(tns_seq) + 3 FROM TAX_NET_SETTING), 3),
+                          #{vo.prev_cctv_id},
+                          '70',
+                          NVL((SELECT MAX(sort_seq) + 3 FROM TAX_NET_SETTING WHERE cctv_id = #{vo.prev_cctv_id}), 3),
+                      <if test="vo.lnk_cctv_id3 != ''">
+                          #{vo.lnk_cctv_id3},
+                          #{vo.lnk_preset_num3},
+                          'Y',
+                      </if>
+                      <if test="vo.lnk_cctv_id3 == ''">
+                          ' ',
+                          ' ',
+                          'N',
+                      </if>
+                          #{vo.reg_mem_id},
+                          SYSDATE,
+                          SYSDATE
+                        )
+            INTO TAX_NET_SETTING (tns_seq, cctv_id, preset_num, sort_seq, lnk_cctv_id, lnk_preset_num, use_fl, reg_mem_id, reg_dts, mod_dts)
+                VALUES (
+                          NVL((SELECT MAX(tns_seq) + 4 FROM TAX_NET_SETTING), 4),
+                          #{vo.prev_cctv_id},
+                          '70',
+                          NVL((SELECT MAX(sort_seq) + 4 FROM TAX_NET_SETTING WHERE cctv_id = #{vo.prev_cctv_id}), 4),
+                      <if test="vo.lnk_cctv_id4 != ''">
+                          #{vo.lnk_cctv_id4},
+                          #{vo.lnk_preset_num4},
+                          'Y',
+                      </if>
+                      <if test="vo.lnk_cctv_id4 == ''">
+                          ' ',
+                          ' ',
+                          'N',
+                      </if>
+                          #{vo.reg_mem_id},
+                          SYSDATE,
+                          SYSDATE
+                        )
+            INTO TAX_NET_SETTING (tns_seq, cctv_id, preset_num, sort_seq, lnk_cctv_id, lnk_preset_num, use_fl, reg_mem_id, reg_dts, mod_dts)
+                VALUES (
+                          NVL((SELECT MAX(tns_seq) + 5 FROM TAX_NET_SETTING), 5),
+                          #{vo.prev_cctv_id},
+                          '70',
+                          NVL((SELECT MAX(sort_seq) + 5 FROM TAX_NET_SETTING WHERE cctv_id = #{vo.prev_cctv_id}), 5),
+                      <if test="vo.lnk_cctv_id5 != ''">
+                          #{vo.lnk_cctv_id5},
+                          #{vo.lnk_preset_num5},
+                          'Y',
+                      </if>
+                      <if test="vo.lnk_cctv_id5 == ''">
+                          ' ',
+                          ' ',
+                          'N',
+                      </if>
+                          #{vo.reg_mem_id},
+                          SYSDATE,
+                          SYSDATE
+                        )
+        SELECT * FROM DUAL
+    </insert>
+
+    <!-- 투망감시 설정 임시 Delete -->
+    <delete id="setNetSettingTmpDelete" parameterType="tax.www.vo.security.CctvVO">
+        DELETE FROM TAX_NET_SETTING
+                WHERE cctv_id = #{vo.prev_cctv_id}
+    </delete>
+
+    <!-- 투망감시 설정 Delete -->
+    <update id="setNetSettingDelete" parameterType="tax.www.vo.security.CctvVO">
+        UPDATE
+            TAX_NET_SETTING
+        <set>
+            use_fl = 'N',
+            lnk_cctv_id = ' ',
+            lnk_preset_num = ' '
+        </set>
+        WHERE
+            cctv_id = #{vo.prev_cctv_id}
+        AND
+            sort_seq = #{vo.sort_seq}
+    </update>
+</mapper>

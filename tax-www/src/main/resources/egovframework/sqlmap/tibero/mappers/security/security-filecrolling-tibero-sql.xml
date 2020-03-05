@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.security.SecurityFilecrollingMapper">
+
+    <!--파일수신션황종류 가져오기-->
+    <select id="getFileCltJongList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            com_cd AS id,
+            cd_nm AS val
+        FROM
+            COM_CODE
+        WHERE
+            jong_cd = 'TT'
+    </select>
+
+    <!-- 파일수신현황 목록 총 개수 가져오기 -->
+    <select id="getFileCltResListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            TAX_FILE_CLT_RES TFCR
+        <where>
+            <if test="vo.isSearch == true">
+                <if test="srcSDate != null and srcSDate != ''">
+                    AND TFCR.make_dt &gt;= #{srcSDate}
+                </if>
+                <if test="srcEDate != null and srcEDate != ''">
+                    AND TFCR.make_dt &lt;= #{srcEDate}
+                </if>
+                <if test="srcFileCltJong != null and srcFileCltJong != ''">
+                    AND TFCR.jong_cd = #{srcFileCltJong}
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 파일수신현황 목록 가져오기 -->
+    <select id="getFileCltResList" parameterType="map" resultType="tax.www.vo.security.FilecrollingVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        TFCR.*
+                    FROM
+                        TAX_FILE_CLT_RES TFCR
+                    <where>
+                        <if test="vo.isSearch == true">
+                            <if test="srcSDate != null and srcSDate != ''">
+                                AND TFCR.make_dt &gt;= #{srcSDate}
+                            </if>
+                            <if test="srcEDate != null and srcEDate != ''">
+                                AND TFCR.make_dt &lt;= #{srcEDate}
+                            </if>
+                            <if test="srcFileCltJong != null and srcFileCltJong != ''">
+                                AND TFCR.jong_cd = #{srcFileCltJong}
+                            </if>
+                            <if test="vo.defWhere != null">
+                                AND ${vo.defWhere}
+                            </if>
+                        </if>
+                    </where>
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , make_dt DESC
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 오류 세부 목록 총 개수 가져오기 -->
+    <select id="getFileCltErrListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            TAX_FILE_CLT_ERR TFCE
+        <where>
+            AND TFCE.tfcr_seq = #{tfcr_seq, jdbcType=VARCHAR}
+        </where>
+    </select>
+
+    <!-- 오류 세부 목록 가져오기 -->
+    <select id="getFileCltErrList" parameterType="map" resultType="tax.www.vo.security.FilecrollingVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM as rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        TFCE.*
+                    FROM
+                        TAX_FILE_CLT_ERR TFCE
+
+                    <where>
+                        AND TFCE.tfcr_seq = #{tfcr_seq, jdbcType=VARCHAR}
+                    </where>
+                  ) T
+            ) A0
+
+        WHERE
+        A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+</mapper>

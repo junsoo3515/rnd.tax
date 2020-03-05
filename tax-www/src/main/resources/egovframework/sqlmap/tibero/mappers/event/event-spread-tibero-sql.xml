@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.event.EventSpreadMapper">
+
+    <!--전파그룹종류 가져오기-->
+    <select id="getTcgJongList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            tcg_seq AS id,
+            grp_nm AS val
+        FROM
+            TAX_CONTACT_GRP
+    </select>
+
+    <!-- 상황전파 이력 관리 목록 개수 가져오기 -->
+    <select id="getSitPpgListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT (1)
+        FROM
+            (
+              SELECT
+                  TSP.tsp_seq,
+                  TRI.car_no,
+                  TRI.reg_dts,
+                  TCG.grp_nm,
+                  CSS.send_dt,
+                  CSS.sms_conts,
+                  TCG.tcg_seq,
+                  CSS.send_fl
+              FROM
+                  TAX_RECOG_INFO TRI, TAX_SIT_PPG TSP, COM_SMS_SEND CSS, TAX_CONTACT_GRP TCG
+              WHERE
+                  TSP.tri_seq = TRI.tri_seq
+              AND TSP.tcg_seq = TCG.tcg_seq
+              AND TSP.css_seq = CSS.css_seq
+            ) AS A
+        LEFT JOIN
+            (
+              SELECT
+                  prc_user_seq,
+                  car_no
+              FROM
+                  TAX_PROCESS
+            ) AS B
+        ON A.car_no = B.car_no
+        <where>
+            <if test="vo.isSearch == true">
+                <if test="srcSDate != null and srcSDate != ''">
+                    AND TO_CHAR(reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                </if>
+                <if test="srcEDate != null and srcEDate != ''">
+                    AND TO_CHAR(reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                </if>
+                <if test="srcTcgJong != null and srcTcgJong != ''">
+                    AND tcg_seq = #{srcTcgJong}
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 상황전파 이력 관리 목록 가져오기 -->
+    <select id="getSitPpgList" parameterType="map" resultType="tax.www.vo.event.SpreadVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        A.tsp_seq,
+                        A.car_no,
+                        A.reg_dts,
+                        A.grp_nm,
+                        A.send_dt,
+                        A.sms_conts,
+                        A.send_fl,
+                        (SELECT COUNT (1) FROM TAX_CONTACT WHERE tcg_seq = A.tcg_seq) AS con_ct,
+                        (SELECT nm FROM COM_MANAGER WHERE cm_seq = B.prc_user_seq) AS prc_nm
+                    FROM
+                        (
+                          SELECT
+                              TSP.tsp_seq,
+                              TRI.car_no,
+                              TRI.reg_dts,
+                              TCG.grp_nm,
+                              CSS.send_dt,
+                              CSS.sms_conts,
+                              TCG.tcg_seq,
+                              CSS.send_fl
+                          FROM
+                              TAX_RECOG_INFO TRI, TAX_SIT_PPG TSP, COM_SMS_SEND CSS, TAX_CONTACT_GRP TCG
+                          WHERE
+                              TSP.tri_seq = TRI.tri_seq
+                              AND TSP.tcg_seq = TCG.tcg_seq
+                              AND TSP.css_seq = CSS.css_seq
+                        ) AS A
+                    LEFT JOIN
+                        (
+                          SELECT
+                              prc_user_seq,
+                              car_no
+                          FROM
+                              TAX_PROCESS
+                        ) AS B
+                    ON A.car_no = B.car_no
+                    <where>
+                        <if test="vo.isSearch == true">
+                            <if test="srcSDate != null and srcSDate != ''">
+                                AND TO_CHAR(reg_dts, 'YYYYMMDD') &gt;= #{srcSDate}
+                            </if>
+                            <if test="srcEDate != null and srcEDate != ''">
+                                AND TO_CHAR(reg_dts, 'YYYYMMDD') &lt;= #{srcEDate}
+                            </if>
+                            <if test="srcTcgJong != null and srcTcgJong != ''">
+                                AND tcg_seq = #{srcTcgJong}
+                            </if>
+                            <if test="vo.defWhere != null">
+                                AND ${vo.defWhere}
+                            </if>
+                        </if>
+                    </where>
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , reg_dts DESC
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+</mapper>

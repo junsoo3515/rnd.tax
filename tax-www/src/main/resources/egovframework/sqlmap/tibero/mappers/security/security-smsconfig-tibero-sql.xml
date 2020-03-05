@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.security.SecuritySmsconfigMapper">
+
+    <!-- 그룹 총 개수 가져오기 -->
+    <select id="getContactGrpListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            TAX_CONTACT_GRP
+        <where>
+            AND use_fl = 'Y'
+            <if test="vo.isSearch == true">
+                <if test="srcContactGrp != null and srcContactGrp != ''">
+                    AND grp_nm LIKE '%${srcContactGrp}%'
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 그룹 목록 가져오기 -->
+    <select id="getContactGrpList" parameterType="map" resultType="tax.www.vo.security.SmsconfigVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        TCG.tcg_seq,
+                        TCG.grp_nm,
+                        SUBSTR(TCG.sms_st_time, 1, 2) || ':' || SUBSTR(TCG.sms_st_time, 3, 2) sms_st_time,
+                        SUBSTR(TCG.sms_ed_time, 1, 2) || ':' || SUBSTR(TCG.sms_ed_time, 3, 2) sms_ed_time,
+                        (SELECT COUNT(1) FROM TAX_CONTACT TC WHERE TCG.tcg_seq = TC.tcg_seq) con_ct
+                    FROM
+                        TAX_CONTACT_GRP TCG
+
+                    <where>
+                        AND TCG.use_fl = 'Y'
+                        <if test="vo.isSearch == true">
+                            <if test="srcContactGrp != null and srcContactGrp != ''">
+                                AND grp_nm LIKE '%${srcContactGrp}%'
+                            </if>
+                            <if test="vo.defWhere != null">
+                                AND ${vo.defWhere}
+                            </if>
+                        </if>
+                    </where>
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , reg_dts DESC
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 그룹목록 Insert -->
+    <insert id="setContactGrpInsert" parameterType="tax.www.vo.security.SmsconfigVO">
+        INSERT INTO
+        TAX_CONTACT_GRP(tcg_seq, grp_nm, sms_st_time, sms_ed_time, use_fl, reg_mem_id, reg_dts, mod_dts)
+        VALUES(
+        NVL((SELECT MAX(tcg_seq) + 1 FROM TAX_CONTACT_GRP),1),
+        #{vo.grp_nm},
+        #{vo.sms_st_time},
+        #{vo.sms_ed_time},
+        'Y',
+        #{vo.reg_mem_id},
+        SYSDATE,
+        SYSDATE
+        )
+    </insert>
+
+    <!-- 그룹목록 Update -->
+    <update id="setContactGrpUpdate" parameterType="tax.www.vo.security.SmsconfigVO">
+        UPDATE
+            TAX_CONTACT_GRP
+
+        <set>
+            sms_st_time = #{vo.sms_st_time},
+            sms_ed_time = #{vo.sms_ed_time},
+            mod_dts = SYSDATE
+        </set>
+
+        WHERE
+            tcg_seq = #{vo.tcg_seq}
+    </update>
+
+    <!-- 그룹목록 Delete -->
+    <update id="setContactGrpDelete" parameterType="tax.www.vo.security.SmsconfigVO">
+        UPDATE
+            TAX_CONTACT_GRP
+
+        <set>
+            use_fl = 'N',
+            mod_dts = SYSDATE
+        </set>
+
+        WHERE
+            tcg_seq = #{vo.tcg_seq}
+    </update>
+
+    <!-- 연락처 총 개수 가져오기 -->
+    <select id="getContactListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            COM_MANAGER CM, TAX_CONTACT TC
+
+        <where>
+            AND CM.cm_seq = TC.tcg_seq
+            AND TC.tcg_seq = #{tcg_seq}
+            <if test="vo.isSearch == true">
+                <if test="srcContact != null and srcContact != ''">
+                    AND CM.hp LIKE '%${srcContact}%'
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 연락처 목록 가져오기 -->
+    <select id="getContactList" parameterType="map" resultType="tax.www.vo.security.SmsconfigVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM as rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                        TC.tc_seq,
+                        TC.tcg_seq,
+                        TC.cm_seq,
+                        CM.nm,
+                        CM.hp,
+                        CM.part_nm
+                    FROM
+                        COM_MANAGER CM, TAX_CONTACT TC
+
+                    <where>
+                        AND CM.cm_seq = TC.cm_seq
+                        AND TC.tcg_seq = #{tcg_seq}
+                        <if test="vo.isSearch == true">
+                            <if test="srcContact != null and srcContact != ''">
+                                AND CM.hp LIKE '%${srcContact}%'
+                            </if>
+                            <if test="vo.defWhere != null">
+                                AND ${vo.defWhere}
+                            </if>
+                        </if>
+                    </where>
+
+                    <trim prefix="ORDER BY" prefixOverrides=",">
+                        <choose>
+                            <when test="vo.sortID != null and vo.sortID != ''">
+                                , ${vo.sortID} ${vo.sortDesc}
+                            </when>
+                            <otherwise>
+                                , tc_seq
+                            </otherwise>
+                        </choose>
+                    </trim>
+                  ) T
+            ) A0
+    </select>
+
+    <!-- 연락처 Insert -->
+    <insert id="setManagerInsert" parameterType="tax.www.vo.security.SmsconfigVO">
+        INSERT INTO
+        COM_MANAGER(cm_seq, nm, hp, part_nm, email, sms_accept_fl, reg_mem_id, reg_dts, mod_dts)
+        VALUES(
+        NVL((SELECT MAX(cm_seq) + 1 FROM COM_MANAGER),1),
+        #{vo.nm},
+        #{vo.hp},
+        #{vo.part_nm},
+        #{vo.email},
+        'Y',
+        #{vo.reg_mem_id},
+        SYSDATE,
+        SYSDATE
+        )
+    </insert>
+    <insert id="setContactInsert" parameterType="tax.www.vo.security.SmsconfigVO">
+        INSERT INTO
+        TAX_CONTACT(tc_seq, tcg_seq, cm_seq, reg_dts, mod_dts)
+        VALUES(
+        NVL((SELECT MAX(tc_seq) + 1 FROM TAX_CONTACT), 1),
+        #{vo.tcg_seq},
+        (SELECT MAX(cm_seq)  FROM COM_MANAGER),
+        SYSDATE,
+        SYSDATE
+        )
+    </insert>
+
+    <!-- 연락처 Update -->
+    <update id="setContactUpdate" parameterType="tax.www.vo.security.SmsconfigVO">
+        UPDATE
+            TAX_CONTACT
+
+        <set>
+            mod_dts = SYSDATE
+        </set>
+
+        WHERE
+            tc_seq = #{vo.tc_seq}
+    </update>
+    <update id="setManagerUpdate" parameterType="tax.www.vo.security.SmsconfigVO">
+        UPDATE
+            COM_MANAGER
+
+        <set>
+            nm = #{vo.nm},
+            hp = #{vo.hp},
+            part_nm = #{vo.part_nm},
+            mod_dts = SYSDATE
+        </set>
+
+        WHERE
+            cm_seq = #{vo.cm_seq}
+    </update>
+
+    <!-- 연락처 Delete -->
+    <delete id="setContactDelete" parameterType="tax.www.vo.security.SmsconfigVO">
+        DELETE FROM TAX_CONTACT
+        WHERE
+            tc_seq = #{vo.tc_seq}
+    </delete>
+
+    <!-- 담당자 테이블 데이터 가져오기 -->
+    <select id="chkDupContact" parameterType="map" resultType="tax.www.vo.security.SmsconfigVO">
+        SELECT
+            cm_seq,
+            nm,
+            hp,
+            part_nm
+        FROM
+            COM_MANAGER
+    </select>
+</mapper>

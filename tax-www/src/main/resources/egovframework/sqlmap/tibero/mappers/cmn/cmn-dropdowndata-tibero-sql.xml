@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.cmn.CmnDropdownMapper">
+
+    <!--코드종류 가져오기-->
+    <select id="getCodeGubunList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            jong_cd AS id,
+            nm AS val
+        FROM
+            COM_CODE_JONG
+        ORDER BY
+            nm
+    </select>
+
+    <!-- 공통코드 가져오기 -->
+    <select id="getCodeList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            com_cd AS id,
+            cd_nm AS val
+        FROM
+            COM_CODE T0
+
+        <where>
+            AND T0.use_fl = 'Y'
+            <if test="jongCD != null and jongCD !=''">
+                AND T0.jong_cd = #{jongCD, jdbcType=VARCHAR}
+            </if>
+        </where>
+
+        ORDER BY
+            T0.sort_seq
+    </select>
+
+    <!--권한 가져오기-->
+    <select id="getAuthList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            auth_cd AS id,
+            nm AS val
+        FROM
+            COM_MEM_AUTH
+        ORDER BY
+            nm
+    </select>
+</mapper>

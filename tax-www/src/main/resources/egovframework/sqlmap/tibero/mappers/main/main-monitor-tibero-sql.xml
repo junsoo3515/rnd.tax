@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.main.MainMonitorMapper">
+
+    <!-- 상황처리 목록 총 개수 가져오기 -->
+    <select id="getSitPcsListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT (1)
+        FROM
+            (
+              SELECT
+                  A.cctv_id,
+                  A.tri_seq,
+                  A.tci_seq,
+                  A.car_no,
+                  A.tax_money_cnt,
+                  A.reg_dts,
+                  A.point_x,
+                  A.point_y,
+                  NVL(B.state, '발생') AS state
+              FROM
+                  (
+                    SELECT
+                         *
+                    FROM
+                        (
+                          SELECT
+                              TRI.cctv_id,
+                              TRI.tri_seq,
+                              TCI.tci_seq,
+                              TRI.car_no,
+                              TCI.tax_money || '(' || TCI.tax_cnt || ')' AS tax_money_cnt,
+                              TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD') AS reg_dts,
+                              PFV.point_x,
+                              PFV.point_y,
+                              ROW_NUMBER() OVER(PARTITION BY TRI.car_no ORDER BY TRI.reg_dts DESC) AS row_num
+                          FROM
+                              TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                          WHERE
+                              TRI.car_no = TCI.car_no
+                          AND TRI.tax_fl = 'Y'
+                          AND TRI.reg_dts &lt;= SYSDATE
+                          AND TRI.reg_dts &gt;= SYSDATE-1
+                          AND PFV.fclt_id = TRI.cctv_id
+                        )
+                    WHERE
+                        row_num = 1
+                  ) AS A
+              LEFT JOIN
+                  (
+                    SELECT
+                        car_no,
+                        CASE
+                                WHEN prc_fl = 'N' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                THEN '발생'
+                                WHEN prc_fl = 'Y' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                THEN '접수중'
+                                WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                THEN '처리중'
+                                WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'Y' AND seize_user_seq IS NOT NULL
+                                THEN '종료'
+                        END AS state
+                    FROM
+                        TAX_PROCESS
+                  ) AS B
+              ON A.car_no = B.car_no
+            )
+    </select>
+
+    <!-- 상황처리 목록 가져오기 -->
+    <select id="getSitPcsList" parameterType="map" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            *
+        FROM
+            (
+              SELECT
+                  ROWNUM AS rnum,
+                  T.*
+              FROM
+                  (
+                    SELECT
+                       *
+                    FROM
+                        (
+                          SELECT
+                              A.cctv_id,
+                              A.tri_seq,
+                              A.tci_seq,
+                              A.car_no,
+                              A.tax_money_cnt,
+                              A.reg_dts,
+                              A.ocr_dts,
+                              A.point_x,
+                              A.point_y,
+                              NVL(B.state, '발생') AS state
+                          FROM
+                              (
+                                SELECT
+                                    *
+                                FROM
+                                    (
+                                      SELECT
+                                          TRI.cctv_id,
+                                          TRI.tri_seq,
+                                          TCI.tci_seq,
+                                          TRI.car_no,
+                                          TCI.tax_money || '(' || TCI.tax_cnt || ')' AS tax_money_cnt,
+                                          TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD') AS reg_dts,
+                                          TRI.reg_dts AS ocr_dts,
+                                          PFV.point_x,
+                                          PFV.point_y,
+                                          ROW_NUMBER() OVER(PARTITION BY TRI.car_no ORDER BY TRI.reg_dts DESC) AS row_num
+                                      FROM
+                                          TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                                      WHERE
+                                          TRI.car_no = TCI.car_no
+                                      AND TRI.tax_fl = 'Y'
+                                      AND TRI.reg_dts &lt;= SYSDATE
+                                      AND TRI.reg_dts &gt;= SYSDATE-1
+                                      AND PFV.fclt_id = TRI.cctv_id
+                                    )
+                                WHERE
+                                    row_num = 1
+                              ) AS A
+                          LEFT JOIN
+                              (
+                                SELECT
+                                    car_no,
+                                    CASE
+                                            WHEN prc_fl = 'N' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                            THEN '발생'
+                                            WHEN prc_fl = 'Y' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                            THEN '접수중'
+                                            WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                                            THEN '처리중'
+                                            WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'Y' AND seize_user_seq IS NOT NULL
+                                            THEN '종료'
+                                    END AS state
+                                FROM
+                                  TAX_PROCESS
+                              ) AS B
+                          ON A.car_no = B.car_no
+                        )
+                    ORDER BY ocr_dts DESC
+                  ) T
+            ) A0
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 발생정보, 상황처리 가져오기 -->
+    <select id="getDetailInfoData" parameterType="tax.www.vo.main.MonitorVO" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            A.generate_type,
+            A.car_no,
+            A.tot_money_cnt,
+            A.generate_info,
+            A.cctv_info,
+            B.prc_fl,
+            B.seize_fl,
+            B.prc_user_seq,
+            B.seize_user_seq,
+            B.seize_dt,
+            B.prc_cont
+        FROM
+            (
+              SELECT
+                  (SELECT CC.cd_nm FROM COM_CODE CC WHERE TCI.make_type_cd = CC.com_cd AND CC.jong_cd = 'MT') || ' 외 ' || TCI.tax_cnt || ' 건' AS generate_type,
+                  TRI.car_no,
+                  --             TCI.car_type,
+                  --             TCI.car_color,
+                  --             TCI.car_md_year,
+                  TCI.tot_money || ' (' || TCI.tot_cnt || ')' AS tot_money_cnt,
+                  TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD HH24:MI:SS') || ' / ' || PFV.road_adres_nm AS generate_info,
+                  PFV.fclt_id || ' / ' || PFV.fclt_lbl_nm AS cctv_info
+              FROM
+                  TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+              WHERE
+                  TRI.tri_seq = #{vo.tri_seq}
+              AND
+                  TRI.tax_fl = 'Y'
+              AND
+                  TRI.cctv_id = PFV.fclt_id
+              AND
+                  TRI.car_no = TCI.car_no
+            ) AS A
+            LEFT JOIN
+            (
+              SELECT
+                  car_no,
+                  prc_fl,
+                  seize_fl,
+                  prc_user_seq,
+                  seize_user_seq,
+                  CASE WHEN seize_dt IS NOT NULL THEN SUBSTR(seize_dt, 1, 4) || '-' || SUBSTR(seize_dt, 5, 2) || '-' || SUBSTR(seize_dt, 7, 2)
+                  ELSE ''
+                  END AS seize_dt,
+                  prc_cont
+              FROM
+                  TAX_PROCESS
+            ) AS B
+            ON A.car_no = B.car_no
+    </select>
+
+    <!-- 담당자 가져오기 -->
+    <select id="getManagerList" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            cm_seq AS id,
+            nm || ' / ' || hp || ' / ' || part_nm AS val
+        FROM
+            COM_MANAGER
+    </select>
+
+    <!-- 상세정보 적용 -->
+    <update id="setDetailInfoUpdate" parameterType="map">
+       MERGE INTO TAX_PROCESS
+             USING DUAL
+             ON (car_no = #{vo.car_no})
+       WHEN MATCHED THEN
+            UPDATE
+            SET
+                prc_user_seq = #{vo.prc_user_seq},
+                seize_user_seq = #{vo.seize_user_seq},
+                prc_fl = #{vo.prc_fl},
+                seize_fl = #{vo.seize_fl},
+                seize_dt = replace(#{vo.seize_dt}, '-'),
+                prc_cont = #{vo.prc_cont},
+                mod_dts = SYSDATE
+       WHEN NOT MATCHED THEN
+            INSERT (car_no, prc_user_seq, seize_user_seq, prc_fl, seize_fl, seize_dt, prc_cont, reg_mem_id, reg_dts, mod_dts)
+            VALUES (
+                      #{vo.car_no},
+                      #{vo.prc_user_seq},
+                      #{vo.seize_user_seq},
+                      #{vo.prc_fl},
+                      #{vo.seize_fl},
+                      replace(#{vo.seize_dt}, '-'),
+                      #{vo.prc_cont},
+                      #{vo.reg_mem_id},
+                      SYSDATE,
+                      SYSDATE
+                     )
+    </update>
+
+    <!-- 영치 등록 시 체납처리 이력 테이블(TAX_PRC_HISTORY) 상세정보 추가-->
+    <update id="setDetailInfoInsert" parameterType="map">
+        INSERT INTO TAX_PRC_HISTORY (tph_seq, tri_seq, car_no, prc_fl, prc_user_seq, seize_fl, seize_user_seq, seize_dt, prc_cont, reg_mem_id, reg_dts)
+        VALUES (
+        (SELECT NVL(MAX(tph_seq) + 1, 1) FROM TAX_PRC_HISTORY),
+        #{vo.tri_seq},
+        #{vo.car_no},
+        #{vo.prc_fl},
+        #{vo.prc_user_seq},
+        #{vo.seize_fl},
+        #{vo.seize_user_seq},
+        replace(#{vo.seize_dt}, '-'),
+        #{vo.prc_cont},
+        #{vo.reg_mem_id},
+        SYSDATE
+        )
+    </update>
+
+    <!-- 관심차량번호 가져오기 -->
+    <select id="getInterestCarList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+       SELECT
+            tci_seq AS id,
+            car_no AS val
+        FROM
+            TAX_CAR_INTEREST
+        WHERE
+            car_no IN (${car_no})
+    </select>
+
+    <!-- 레이어(CCTV 종류) 가져오기 -->
+    <select id="getCctvTypeList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            com_cd AS id,
+            cd_nm AS val
+        FROM
+            COM_CODE
+        WHERE
+            jong_cd = 'CG'
+    </select>
+
+    <!-- CCTV GIS 정보 가져오기 -->
+    <select id="getCctvGeoData" parameterType="map" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    ROW_NUMBER() OVER(
+                    <if test="vo.cctv_id != 'noGridData'">
+                        PARTITION BY TRI.car_no
+                    </if>
+                    ORDER BY TRI.reg_dts DESC) row_number,
+                    TRI.tri_seq,
+                    TRI.cctv_id,
+                    PFV.point_x,
+                    PFV.point_y,
+                    PFV.fclt_used_ty_cd AS cctv_type,
+                    PFV.fclt_knd_dtl_cd AS cctv_rotate,
+                    TRI.reg_dts
+                FROM
+                    TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                <where>
+                    AND TRI.car_no = TCI.car_no
+                    AND TRI.tax_fl = 'Y'
+                <if test="vo.cctv_id != 'noGridData'">
+                    AND TRI.reg_dts &lt;= SYSDATE
+                    AND TRI.reg_dts &gt;= SYSDATE-1
+                    AND TRI.cctv_id IN (${vo.cctvIds})
+                </if>
+                <if test="vo.cctv_id == 'noGridData' and vo.tri_seq != null">
+                    AND TRI.tri_seq = #{vo.tri_seq}
+                </if>
+                    AND PFV.fclt_id = TRI.cctv_id
+                    AND PFV.fclt_used_ty_cd IN (${vo.cctv_type})
+                </where>
+            ORDER BY TRI.reg_dts DESC
+        )
+        WHERE
+            row_number = 1
+    </select>
+
+    <!-- 분포도 GIS 정보 가져오기 -->
+    <select id="getDistributionGeoData" parameterType="String" resultType="tax.www.vo.main.MonitorVO">
+              SELECT
+                  lg_dong_cd,
+                  point_x,
+                  point_y
+              FROM
+                  TAX_RECOG_INFO TRI, PF_FACILITY_VW PFV
+              WHERE
+                  TRI.cctv_id = PFV.fclt_id
+              AND
+                  TRI.tax_fl = 'Y'
+    </select>
+
+    <!-- 관심차량 이동경로 목록 가져오기 -->
+    <select id="getRouteList" parameterType="String" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    PFV.point_x AS point_x,
+                    PFV.point_y AS point_y,
+                    TRI.car_no AS car_no,
+                    PFV.fclt_lbl_nm AS cctv_nm,
+                    PFV.road_adres_nm AS cctv_adres,
+                    TRI.reg_dts
+                FROM
+                    TAX_RECOG_INFO TRI, PF_FACILITY_VW PFV
+                WHERE
+                    TRI.cctv_id = PFV.fclt_id
+                AND
+                    TRI.car_no = #{vo.car_no}
+                AND
+                    TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD') &lt;= TO_CHAR(TO_DATE(#{vo.reg_dts}, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD')
+                AND
+                    TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD') &gt;= TO_CHAR(TO_DATE(#{vo.reg_dts}, 'YYYY-MM-DD HH24:MI:SS')-7, 'YYYY-MM-DD')
+                ORDER BY TRI.reg_dts DESC
+            )
+        WHERE
+            ROWNUM &lt;= 10
+    </select>
+
+    <!-- 투망감시 설정 CCTV GIS 정보 가져오기 -->
+    <select id="getNetSetCctvGeoData" parameterType="map" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            A.lnk_cctv_id AS cctv_id,
+            A.lnk_preset_num AS preset_num,
+            B.point_x,
+            B.point_y,
+            B.fclt_knd_dtl_cd AS cctv_rotate,
+            B.fclt_used_ty_cd AS cctv_type,
+            B.fclt_uid AS cctv_uid
+        FROM
+            (
+                SELECT
+                    TNS.tns_seq,
+                    TNS.lnk_cctv_id,
+                    TNS.lnk_preset_num,
+                    TNS.sort_seq
+                FROM
+                    TAX_NET_SETTING TNS, TAX_MONITOR_CCTV TMC
+                WHERE
+                    TNS.cctv_id = TMC.cctv_id
+                AND
+                    TNS.cctv_id = #{vo.cctv_id}
+            ) AS A
+        LEFT JOIN
+            (
+                SELECT
+                    fclt_id,
+                    point_x,
+                    point_y,
+                    fclt_knd_dtl_cd,
+                    fclt_used_ty_cd,
+                    fclt_uid
+                FROM
+                    PF_FACILITY_VW
+            ) AS B
+        ON A.lnk_cctv_id = B.fclt_id
+        WHERE
+            B.fclt_used_ty_cd IN (${vo.cctv_type})
+        ORDER BY sort_seq
+    </select>
+
+    <!-- 실시간 상황처리 목록 가져오기 -->
+    <select id="getRealtimeSitPcsList" parameterType="map" resultType="tax.www.vo.main.MonitorVO">
+        SELECT
+            A.tri_seq,
+            A.cctv_id,
+            A.car_no,
+            A.tax_money_cnt,
+            A.reg_dts,
+            A.ocr_dts,
+            A.point_x,
+            A.point_y,
+            NVL(B.state, '발생') AS state
+        FROM
+            (
+              SELECT
+                  *
+              FROM
+                  (
+                    SELECT
+                        ROW_NUMBER() OVER(ORDER BY TRI.reg_dts DESC) AS row_num,
+                        TRI.tri_seq,
+                        TRI.cctv_id,
+                        TRI.car_no,
+                        TCI.tax_money || '(' || TCI.tax_cnt || ')' AS tax_money_cnt,
+                        TO_CHAR(TRI.reg_dts, 'YYYY-MM-DD') AS reg_dts,
+                        TRI.reg_dts AS ocr_dts,
+                        PFV.point_x,
+                        PFV.point_y,
+                        PFV.fclt_uid AS cctv_uid
+                    FROM
+                        TAX_RECOG_INFO TRI, TAX_CAR_INFO TCI, PF_FACILITY_VW PFV
+                    WHERE
+                        TRI.car_no = TCI.car_no
+                    AND
+                        TRI.tax_fl = 'Y'
+                    AND
+                        PFV.fclt_id = TRI.cctv_id
+                    AND
+                        TRI.reg_dts = TO_DATE(#{sitOcrTime}, 'YYYYMMDDHH24MISS')
+
+                  )
+              WHERE
+                  row_num = 1
+            ) AS A
+            LEFT JOIN
+            (
+              SELECT
+                  car_no,
+                  CASE
+                          WHEN prc_fl = 'N' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                          THEN '발생'
+                          WHEN prc_fl = 'Y' AND prc_user_seq IS NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                          THEN '접수중'
+                          WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'N' AND seize_user_seq IS NULL
+                          THEN '처리중'
+                          WHEN prc_fl = 'Y' AND prc_user_seq IS NOT NULL AND seize_fl = 'Y' AND seize_user_seq IS NOT NULL
+                          THEN '종료'
+                  END AS state
+              FROM
+                  TAX_PROCESS
+            ) AS B
+            ON A.car_no = B.car_no
+    </select>
+
+    <!-- CCTV 정보 가져오기 -->
+    <select id="getCctvInfo" parameterType="map" resultType="egovframework.rte.psl.dataaccess.util.EgovMap">
+        SELECT
+            fclt_id AS cctv_id,
+            fclt_lbl_nm AS cctv_nm,
+            fclt_uid AS cctv_uid
+        FROM
+            PF_FACILITY_VW
+        WHERE
+            fclt_id = #{cctvId}
+    </select>
+</mapper>

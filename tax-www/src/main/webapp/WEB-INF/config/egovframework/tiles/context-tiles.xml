@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE tiles-definitions PUBLIC
+        "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN"
+        "http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+
+<!-- 
+	[Tiles 설정]
+	
+	기본 설정 : http://tiles.apache.org/framework/tutorial/basic/pages.html
+	Tiles Wildcard 설정 : http://tiles.apache.org/framework/tutorial/advanced/wildcard.html
+	ex : */*/*/* - > {1} / {2} / {3} / {4} (최대 4개 까지)
+-->
+<tiles-definitions>
+
+    <!-- Blank layout -->
+    <definition name="blank.common.require" template="/WEB-INF/views/master/master-pattern-require.jsp">
+        <put-attribute name="title" value="체납관리 서비스"/>
+        <put-attribute name="header" value="/WEB-INF/views/master/master-header.jsp"/>
+        <put-list-attribute name="jsPlugin">
+        </put-list-attribute>
+    </definition>
+
+    <!-- 기본양식 Layout -->
+    <definition name="base.common.require" extends="blank.common.require">
+        <put-attribute name="leftmenu" value="1"/>
+        <put-list-attribute name="cssPlugin">
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+        </put-list-attribute>
+    </definition>
+
+    <!-- 기본양식 jqgrid 사용하는 Layout -->
+    <definition name="basegrid.common.require" extends="blank.common.require">
+        <put-attribute name="leftmenu" value="1"/>
+        <put-list-attribute name="cssPlugin">
+            <add-attribute value="/plugins/jqGrid-5.0.0/css/ui.jqgrid-bootstrap.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/jqgrid.custom.css"/>
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+        </put-list-attribute>
+    </definition>
+
+    <!-- 인증 관련 -->
+    <definition name="login/*" template="/WEB-INF/views/master/master-blank.jsp">
+        <put-attribute name="title" value="체납관리 서비스"/>
+        <put-attribute name="body" value="/WEB-INF/views/login/{1}.jsp" type="template"/>
+        <put-list-attribute name="cssPlugin">
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin">
+            <add-attribute value="/login/{1}.js"/>
+        </put-list-attribute>
+    </definition>
+
+    <!-- 에러 관련 -->
+    <definition name="errors" template="/WEB-INF/views/master/master-blank.jsp">
+        <put-attribute name="title" value="체납관리 서비스"/>
+        <put-attribute name="body" value="/WEB-INF/views/errors.jsp" type="template"/>
+        <put-list-attribute name="cssPlugin">
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin">
+            <add-attribute value="/errors.js"/>
+        </put-list-attribute>
+    </definition>
+
+    <!-- GIS 상황관제 -->
+    <definition name="main/monitor" extends="blank.common.require">
+        <put-attribute name="fullcontent" value="1"/>
+        <put-attribute name="body" value="/WEB-INF/views/main/monitor.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/plugins/jqGrid-5.0.0/css/ui.jqgrid-bootstrap.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/jqgrid.custom.css"/>
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+            <add-attribute value="/plugins/openlayers-4.4.2/css/ol.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/ol.custom.css"/>
+            <add-attribute value="/assets/plugins/switchery/switchery.min.css"  />
+            <add-attribute value="/assets/plugins/lightbox/css/lightbox.css"/>
+            <add-attribute value="/plugins/bootstrap-select/bootstrap-select.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/main/monitor.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- VMS 영상 팝업 -->
+    <definition name="main/popupVms" template="/WEB-INF/views/main/popupVms.jsp">
+        <put-attribute name="fullcontent" value="1"/>
+        <put-list-attribute name="cssPlugin" inherit="true">
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+        </put-list-attribute>
+    </definition>
+
+    <!-- 이벤트관리 > 상황발생 이력조회 -->
+    <definition name="event/generate" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/event/generate.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker.css" />
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker3.css" />
+            <add-attribute value="/assets/plugins/lightbox/css/lightbox.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/event/generate.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 이벤트관리 > 상황전파 이력조회 -->
+    <definition name="event/spread" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/event/spread.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker.css" />
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker3.css" />
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/event/spread.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 이벤트관리 > 상황처리관리 -->
+    <definition name="event/process" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/event/process.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker.css" />
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker3.css" />
+            <add-attribute value="/assets/plugins/switchery/switchery.min.css"  />
+            <add-attribute value="/plugins/slippry/slippry.css" />
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/event/process.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 이벤트관리 > 관심차량정보현황-->
+    <definition name="event/info" extends="basegrid.common.require">
+        <put-attribute name="fullcontent" value="1"/>
+        <put-attribute name="body" value="/WEB-INF/views/event/info.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker.css" />
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker3.css" />
+            <add-attribute value="/plugins/openlayers-4.4.2/css/ol.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/ol.custom.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/event/info.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 시스템관리 > 모니터링 CCTV 관리 -->
+    <definition name="security/cctv" extends="basegrid.common.require">
+        <put-attribute name="fullcontent" value="1"/>
+        <put-attribute name="body" value="/WEB-INF/views/security/cctv.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/select2/dist/css/select2.css" />
+            <add-attribute value="/plugins/openlayers-4.4.2/css/ol.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/ol.custom.css"/>
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/security/cctv.js" />
+        </put-list-attribute>
+    </definition>
+    
+    <!-- 시스템관리 > 사용자계정관리 -->
+    <definition name="security/user" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/security/user.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/jquery-file-upload/css/jquery.fileupload.css" />
+            <add-attribute value="/assets/plugins/jquery-file-upload/css/jquery.fileupload-ui.css" />
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/security/user.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 시스템관리 > 파일수신현황 -->
+    <definition name="security/filecrolling" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/security/filecrolling.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker.css" />
+            <add-attribute value="/assets/plugins/bootstrap-datepicker/css/datepicker3.css" />
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/security/filecrolling.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 시스템관리 > 그 외 메뉴 -->
+    <definition name="security/*" extends="basegrid.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/security/{1}.jsp" type="template" />
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/security/{1}.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!-- 개인정보수정 -->
+    <definition name="onepage/myinfo" extends="blank.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/onepage/myinfo.jsp" type="template" />
+        <put-list-attribute name="cssPlugin" inherit="true">
+            <add-attribute value="/plugins/jqGrid-5.0.0/css/ui.jqgrid-bootstrap.css"/>
+            <add-attribute value="/plugins/darkhand-0.1.2/css/jqgrid.custom.css"/>
+            <add-attribute value="/assets/plugins/gritter/css/jquery.gritter.css"/>
+            <add-attribute value="/assets/plugins/jquery-file-upload/css/jquery.fileupload.css" />
+            <add-attribute value="/assets/plugins/jquery-file-upload/css/jquery.fileupload-ui.css" />
+        </put-list-attribute>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/onepage/myinfo.js" />
+        </put-list-attribute>
+    </definition>
+
+    <!--전체-->
+    <definition name="*/*" extends="base.common.require">
+        <put-attribute name="body" value="/WEB-INF/views/{1}/{2}.jsp" type="template"/>
+        <put-list-attribute name="jsPlugin" inherit="true">
+            <add-attribute value="/{1}/{2}.js"/>
+        </put-list-attribute>
+    </definition>
+</tiles-definitions>

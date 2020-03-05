@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.security.SecurityInterestMapper">
+
+    <!-- 관심차량 목록 총 개수 가져오기 -->
+    <select id="getInterestListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            TAX_CAR_INTEREST TCI
+        <where>
+            <if test="vo.isSearch == true">
+                <if test="srcCarNo != null and srcCarNo != ''">
+                    AND TCI.car_no LIKE '%${srcCarNo}%'
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 관심차량 목록 가져오기 -->
+    <select id="getInterestList" parameterType="map" resultType="tax.www.vo.security.InterestVO">
+        SELECT
+        *
+        FROM
+        (
+            SELECT
+                ROWNUM AS rnum,
+                T.*
+            FROM
+            (
+                SELECT
+                    TCI.tci_seq,
+                    TCI.car_no
+                FROM
+                    TAX_CAR_INTEREST TCI
+                <where>
+                    <if test="vo.isSearch == true">
+                        <if test="srcCarNo != null and srcCarNo != ''">
+                            AND TCI.car_no LIKE '%${srcCarNo}%'
+                        </if>
+                        <if test="vo.defWhere != null">
+                            AND ${vo.defWhere}
+                        </if>
+                    </if>
+                </where>
+            ) T
+        ) A0
+
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 관심차량 Insert -->
+    <insert id="setInterestInsert" parameterType="tax.www.vo.security.InterestVO">
+        INSERT INTO TAX_CAR_INTEREST (
+                                          tci_seq,
+                                          car_no,
+                                          reg_mem_id,
+                                          reg_dts
+                                      )
+                                      SELECT
+                                          NVL((SELECT MAX(tci_seq) FROM TAX_CAR_INTEREST) + 1, 1),
+                                          #{vo.car_no},
+                                          #{vo.reg_mem_id},
+                                          SYSDATE
+                                      FROM
+                                          DUAL
+                                      WHERE
+                                           NOT EXISTS (SELECT car_no FROM TAX_CAR_INTEREST WHERE car_no = #{vo.car_no})
+
+    </insert>
+
+    <!-- 관심차량 Update -->
+    <update id="setInterestUpdate" parameterType="tax.www.vo.security.InterestVO">
+        UPDATE
+            TAX_CAR_INTEREST
+        <set>
+            car_no = #{vo.car_no},
+        </set>
+        WHERE
+            tci_seq = #{vo.tci_seq}
+        AND
+            NOT EXISTS (SELECT car_no FROM TAX_CAR_INTEREST WHERE car_no = #{vo.car_no})
+    </update>
+
+    <!-- 관심차량 Delete -->
+    <delete id="setInterestDelete" parameterType="tax.www.vo.security.InterestVO">
+        DELETE FROM TAX_CAR_INTEREST
+        WHERE tci_seq = #{vo.tci_seq}
+    </delete>
+</mapper>

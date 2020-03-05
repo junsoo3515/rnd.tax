@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 dao의 패키지명과 클래스명이 일치해야 함. -->
+<mapper namespace="tax.www.dao.security.SecurityConfigMapper">
+
+    <!-- 판별조건 가져오기-->
+    <select id="getDisConList" parameterType="map" resultType="tax.www.vo.cmn.list.ListObjVO">
+        SELECT
+            com_cd AS id,
+            cd_nm AS val
+        FROM
+            COM_CODE
+        WHERE
+            jong_cd = 'DC'
+    </select>
+
+    <!-- 체납차량 판별수식 목록 총 개수 가져오기 -->
+    <select id="getConfigListCnt" parameterType="map" resultType="int">
+        SELECT
+            COUNT(1)
+        FROM
+            TAX_CAR_FILTER TCF
+        <where>
+            <if test="vo.isSearch == true">
+                <if test="srcDis != null and srcDis != ''">
+                    AND TCF.filter_cd LIKE '%${srcDis}%'
+                </if>
+                <if test="vo.defWhere != null">
+                    AND ${vo.defWhere}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 체납차량 판별수식 목록 가져오기 -->
+    <select id="getConfigList" parameterType="map" resultType="tax.www.vo.security.ConfigVO">
+        SELECT
+        *
+        FROM
+        (
+            SELECT
+                ROWNUM AS rnum,
+                T.*
+            FROM
+            (
+                SELECT
+                    TCF.tcf_seq,
+                    (SELECT cd_nm FROM COM_CODE WHERE com_cd = TCF.filter_cd) AS filter_cd,
+                    TCF.fomula
+                FROM
+                    TAX_CAR_FILTER TCF
+                <where>
+                    <if test="vo.isSearch == true">
+                        <if test="srcDis != null and srcDis != ''">
+                            AND TCF.filter_cd LIKE '%${srcDis}%'
+                        </if>
+                        <if test="vo.defWhere != null">
+                            AND ${vo.defWhere}
+                        </if>
+                    </if>
+                </where>
+            ) T
+        ) A0
+
+        WHERE
+            A0.rnum BETWEEN (#{vo.page} * #{vo.rows} - ( #{vo.rows} - 1 )) AND (#{vo.page} * #{vo.rows})
+    </select>
+
+    <!-- 체납차량 판별조건 Insert -->
+    <insert id="setConfigInsert" parameterType="tax.www.vo.security.ConfigVO">
+        INSERT INTO TAX_CAR_FILTER (
+                                          tcf_seq,
+                                          filter_cd,
+                                          fomula,
+                                          reg_mem_id,
+                                          reg_dts,
+                                          mod_dts
+                                      )
+                                      VALUES
+                                      (
+                                          NVL((SELECT MAX (tcf_seq) FROM TAX_CAR_FILTER) + 1 , 1),
+                                          #{vo.filter_cd},
+                                          #{vo.fomula},
+                                          #{vo.reg_mem_id},
+                                          SYSDATE,
+                                          SYSDATE
+                                      )
+
+    </insert>
+
+    <!-- 체납차량 판별조건 Update -->
+    <update id="setConfigUpdate" parameterType="tax.www.vo.security.ConfigVO">
+        UPDATE
+            TAX_CAR_FILTER
+        <set>
+            filter_cd = #{vo.filter_cd},
+            fomula = #{vo.fomula}
+        </set>
+        WHERE
+            tcf_seq = #{vo.tcf_seq}
+    </update>
+
+    <!-- 체납차량 판별조건 Delete -->
+    <delete id="setConfigDelete" parameterType="tax.www.vo.security.ConfigVO">
+        DELETE FROM TAX_CAR_FILTER
+        WHERE tcf_seq = #{vo.tcf_seq}
+    </delete>
+</mapper>
